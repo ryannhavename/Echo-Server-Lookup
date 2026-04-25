@@ -1,5 +1,5 @@
-// app/api/whois/route.ts - Server-side WHOIS lookup via ip-api.com
-// Menghindari mixed content & rate limit dengan memproses di server
+// app/api/whois/route.ts - Server-side WHOIS lookup via ipinfo.io
+// ipinfo.io lebih stabil di Vercel Edge dibanding ip-api.com
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -26,28 +26,51 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(`https://ip-api.com/json/${encodeURIComponent(ip)}`, {
+    const res = await fetch(`https://ipinfo.io/${encodeURIComponent(ip)}/json`, {
       headers: {
         'User-Agent': 'Echo-Server-Lookup/1.0',
+        'Accept': 'application/json',
       },
-      // Cache selama 5 menit
       next: { revalidate: 300 },
     });
 
     if (!res.ok) {
-      throw new Error(`WHOIS API error: ${res.status}`);
+      throw new Error(`ipinfo.io error: ${res.status}`);
     }
 
     const data = await res.json();
 
-    if (data.status !== 'success') {
-      return NextResponse.json(
-        { error: data.message || 'WHOIS lookup failed' },
-        { status: 404 }
-      );
+    // ipinfo.io tidak punya status field, jadi kita asumsikan sukses jika ada response
+    // Mapping response ipinfo.io ke format WHOISData yang sudah ada
+    const mappedData: Record<string, unknown> = {
+      status: 'success',
+      query: data.ip || ip,
+      city: data.city || undefined,
+      regionName: data.region || undefined,
+      country: data.country || undefined,
+      timezone: data.timezone || undefined,
+      org: data.org || undefined,
+      isp: data.org || undefined, // org biasanya berisi ISP info
+      reverse: data.hostname || undefined,
+      mobile: false,
+      proxy: false,
+      hosting: data.org?.toLowerCase().includes('hosting') || false,
+    };
+
+    // Parse ASN dari org field (format: "AS15169 Google LLC")
+    if (data.org) {
+      mappedData.as = data.org;
+      mappedData.asname = data.org.split(' ').slice(1).join(' ');
     }
 
-    return NextResponse.json(data, {
+    // Parse lat/lon dari loc field (format: "37.4056,-122.0775")
+    if (data.loc) {
+      const [lat, lon] = data.loc.split(',').map(parseFloat);
+      mappedData.lat = lat;
+      mappedData.lon = lon;
+    }
+
+    return NextResponse.json(mappedData, {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },
@@ -55,7 +78,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('WHOIS fetch error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch WHOIS data' },
+      { error: 'Failed to fetch WHOIS data', status: 'fail' },
       { status: 500 }
     );
   }
