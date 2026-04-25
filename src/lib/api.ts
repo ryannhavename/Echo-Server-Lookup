@@ -3,7 +3,7 @@
 import type { MCServerResponse, WHOISData } from '@/types/minecraft';
 
 const MCSRVSTAT_API = 'https://api.mcsrvstat.us/3';
-const IP_API = 'http://ip-api.com/json';
+const IP_API = 'https://ip-api.com/json';
 
 export async function fetchServerData(ip: string): Promise<MCServerResponse | null> {
   try {

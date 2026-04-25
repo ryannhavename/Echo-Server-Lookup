@@ -70,6 +70,7 @@ export const HistoricalPerformance = memo(function HistoricalPerformance({
   const [loading, setLoading] = useState(true);
   const [chartType, setChartType] = useState<'players' | 'latency'>('players');
   const [error, setError] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   // Format time to 12-hour with AM/PM
   const formatTime = useCallback((timestamp: number) => {
@@ -129,14 +130,14 @@ export const HistoricalPerformance = memo(function HistoricalPerformance({
 
   return (
     <div className="px-6 py-4 border-t border-white/5">
-      <details className="group">
+      <details className="group" onToggle={(e) => setIsOpen(e.currentTarget.open)}>
         <summary className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-gray-300 transition-colors font-medium">
           <ChevronRight className="w-4 h-4 opacity-60 group-open:rotate-90 transition-transform" />
           <Activity className="w-4 h-4 opacity-70" />
           Historical Performance
         </summary>
 
-        <div className="mt-3">
+        {isOpen && (<div className="mt-3">
           <div className="text-xs text-gray-500 mb-3 font-medium">
             Historical Performance (24h) - Local Time
           </div>
@@ -230,7 +231,7 @@ export const HistoricalPerformance = memo(function HistoricalPerformance({
               {chartType === 'players' ? 'Player Count' : 'Latency (ms)'}
             </span>
           </div>
-        </div>
+        </div>)}
       </details>
     </div>
   );
