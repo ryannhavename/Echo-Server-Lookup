@@ -300,27 +300,52 @@ function BotProtectionCard({ whoIsData, serverData }: { whoIsData: WHOISData; se
   const getBotProtectionStatus = () => {
     const isp = whoIsData.isp?.toLowerCase() || '';
     const org = whoIsData.org?.toLowerCase() || '';
-    const fullText = `${isp} ${org}`;
+    const fullText = `${isp} ${org} ${whoIsData.as?.toLowerCase() || ''}`;
 
-    const protectionProviders = [
-      'cloudflare', 'akamai', 'ddos-guard', 'sucuri', 'path network',
-      'incapsula', 'fastly', 'imperva', 'aws shield', 'azure ddos'
-    ];
+    // Comprehensive DDoS protection providers with tiers
+    const enterpriseProviders = ['cloudflare', 'akamai', 'imperva', 'aws shield', 'azure ddos', 'google cloud armor'];
+    const advancedProviders = ['fastly', 'g-core labs', 'ddos-guard', 'ovh', 'ovhcloud', 'stackpath', 'cdn77'];
+    const standardProviders = ['sucuri', 'path network', 'belugacdn', 'tixati', 'x4b'];
 
-    const foundProviders = protectionProviders.filter(p => fullText.includes(p));
+    const allProviders = [...enterpriseProviders, ...advancedProviders, ...standardProviders];
+    const foundProviders = allProviders.filter(p => fullText.includes(p));
+
+    // Determine tier
+    const hasEnterprise = foundProviders.some(p => enterpriseProviders.includes(p));
+    const hasAdvanced = foundProviders.some(p => advancedProviders.includes(p));
 
     if (foundProviders.length > 0) {
-      return { status: 'Protected', color: 'text-green-400', details: [`DDoS protection: ${foundProviders.join(', ')}`] };
+      let status, color, tierDetails;
+
+      if (hasEnterprise) {
+        status = 'Enterprise Protected';
+        color = 'text-blue-400';
+        tierDetails = 'Enterprise-grade (10+ Tbps capacity)';
+      } else if (hasAdvanced) {
+        status = 'Advanced Protected';
+        color = 'text-cyan-400';
+        tierDetails = 'Advanced protection (1+ Tbps capacity)';
+      } else {
+        status = 'DDoS Protected';
+        color = 'text-green-400';
+        tierDetails = 'Standard DDoS protection';
+      }
+
+      return {
+        status,
+        color,
+        details: [`DDoS protection: ${foundProviders.join(', ')}`, tierDetails]
+      };
     }
 
     if (serverData.software) {
       const software = serverData.software.toLowerCase();
       if (software.includes('velocity') || software.includes('bungee') || software.includes('waterfall')) {
-        return { status: 'Proxy Protection', color: 'text-blue-400', details: [`Proxy software detected: ${serverData.software}`] };
+        return { status: 'Proxy Protection', color: 'text-blue-400', details: [`Proxy software: ${serverData.software}`, 'Limited built-in protection'] };
       }
     }
 
-    return { status: 'Standard', color: 'text-gray-400', details: ['No advanced protection'] };
+    return { status: 'Standard', color: 'text-gray-400', details: ['No advanced protection', 'Vulnerable to DDoS <10Gbps'] };
   };
 
   const protection = getBotProtectionStatus();

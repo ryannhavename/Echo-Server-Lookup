@@ -239,11 +239,54 @@ export function analyzeSecurity(
   let level = 'Standard';
   let color = 'text-green-400';
 
-  const ddosProviders = ['cloudflare', 'akamai', 'fastly', 'incapsula', 'sucuri'];
-  if (isp && ddosProviders.some(p => isp.toLowerCase().includes(p))) {
-    level = 'DDoS Protected';
-    color = 'text-blue-400';
-    details.push('DDoS protection detected (Cloudflare/Akamai)');
+  // Comprehensive DDoS protection providers
+  const ddosProviders = [
+    // Enterprise-grade
+    'cloudflare', 'akamai', 'imperva', 'incapsula', 'fastly',
+    'aws shield', 'azure ddos', 'google cloud armor', 'g-core labs',
+    // Hosting with built-in protection
+    'ddos-guard', 'sucuri', 'path network', 'stackpath',
+    'cdn77', 'belugacdn', 'ovh', 'ovhcloud',
+    // Game-specific protection
+    'tixati', 'x4b', 'mcprohosting', 'shockbyte',
+    'gg-servers', 'hosthorde', 'apex hosting',
+  ];
+
+  if (isp) {
+    const ispLower = isp.toLowerCase();
+    const matchedProviders = ddosProviders.filter(p => ispLower.includes(p));
+
+    if (matchedProviders.length > 0) {
+      // Determine protection level based on provider
+      const enterpriseProviders = ['cloudflare', 'akamai', 'imperva', 'aws shield', 'azure ddos', 'google cloud armor'];
+      const advancedProviders = ['fastly', 'g-core labs', 'ddos-guard', 'ovh', 'ovhcloud'];
+
+      const hasEnterprise = matchedProviders.some(p => enterpriseProviders.includes(p));
+      const hasAdvanced = matchedProviders.some(p => advancedProviders.includes(p));
+
+      if (hasEnterprise) {
+        level = 'Enterprise Protected';
+        color = 'text-blue-400';
+        details.push(`Enterprise DDoS protection: ${matchedProviders.join(', ')}`);
+      } else if (hasAdvanced) {
+        level = 'Advanced Protected';
+        color = 'text-cyan-400';
+        details.push(`Advanced DDoS protection: ${matchedProviders.join(', ')}`);
+      } else {
+        level = 'DDoS Protected';
+        color = 'text-green-400';
+        details.push(`DDoS protection: ${matchedProviders.join(', ')}`);
+      }
+
+      // Add note about protection capacity
+      if (ispLower.includes('cloudflare')) {
+        details.push('Protection capacity: 10+ Tbps (Enterprise-grade)');
+      } else if (ispLower.includes('akamai')) {
+        details.push('Protection capacity: 3+ Tbps (Enterprise-grade)');
+      } else if (ispLower.includes('ovh') || ispLower.includes('ovhcloud')) {
+        details.push('Protection capacity: 1+ Tbps (Game-optimized)');
+      }
+    }
   }
 
   if (port && port !== 25565) {
