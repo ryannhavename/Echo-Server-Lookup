@@ -1,9 +1,8 @@
-// lib/api.ts - Fetch server data from MCSrvStat API and WHOIS
+// lib/api.ts - Fetch server data from MCSrvStat API and WHOIS (via server-side API route)
 
 import type { MCServerResponse, WHOISData } from '@/types/minecraft';
 
 const MCSRVSTAT_API = 'https://api.mcsrvstat.us/3';
-const IP_API = 'https://ip-api.com/json';
 
 export async function fetchServerData(ip: string): Promise<MCServerResponse | null> {
   try {
@@ -28,7 +27,7 @@ export async function fetchServerData(ip: string): Promise<MCServerResponse | nu
 
 export async function fetchWhoisData(ip: string): Promise<WHOISData | null> {
   try {
-    const res = await fetch(`${IP_API}/${encodeURIComponent(ip)}`, {
+    const res = await fetch(`/api/whois?ip=${encodeURIComponent(ip)}`, {
       next: { revalidate: 300 }, // Cache for 5 minutes (WHOIS data doesn't change often)
       headers: {
         'User-Agent': 'Echo-Server-Lookup/1.0',
@@ -36,7 +35,10 @@ export async function fetchWhoisData(ip: string): Promise<WHOISData | null> {
     });
 
     if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
+      if (res.status === 429) {
+        console.warn('WHOIS API rate limit reached');
+      }
+      return null;
     }
 
     const data: WHOISData = await res.json();

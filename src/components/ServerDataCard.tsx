@@ -55,7 +55,16 @@ export function ServerDataCard({
         />
 
         {/* WHOIS / Network Data */}
-        {whoIsData && <WhoisSection whoIsData={whoIsData} serverData={serverData} />}
+        {whoIsData ? (
+          <WhoisSection whoIsData={whoIsData} serverData={serverData} />
+        ) : (
+          <div className="px-6 py-4 border-t border-white/5">
+            <div className="text-xs text-gray-500 font-medium flex items-center gap-2">
+              <Globe className="w-3 h-3 opacity-50" />
+              WHOIS data unavailable (rate limited or connection failed)
+            </div>
+          </div>
+        )}
 
         {/* Historical Performance */}
         <HistoricalPerformance
@@ -246,10 +255,40 @@ function ServerStatsGrid({ serverData, whoIsData, latency, measuringLatency }: {
       </motion.div>
 
       {/* Bot Protection */}
-      {whoIsData && <BotProtectionCard whoIsData={whoIsData} serverData={serverData} />}
+      {whoIsData ? (
+        <BotProtectionCard whoIsData={whoIsData} serverData={serverData} />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-white/[0.02] border border-white/5 rounded-2xl p-4"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldCheck className="w-5 h-5 opacity-70 text-gray-500" />
+            <h3 className="font-semibold text-gray-500">Bot Protection</h3>
+          </div>
+          <div className="text-xs text-gray-600 font-medium">Data unavailable</div>
+        </motion.div>
+      )}
 
       {/* Connection Analysis */}
-      {whoIsData && <ConnectionAnalysisCard whoIsData={whoIsData} latency={latency} />}
+      {whoIsData ? (
+        <ConnectionAnalysisCard whoIsData={whoIsData} latency={latency} />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white/[0.02] border border-white/5 rounded-2xl p-4"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="w-5 h-5 opacity-70 text-gray-500" />
+            <h3 className="font-semibold text-gray-500">Connection Analysis</h3>
+          </div>
+          <div className="text-xs text-gray-600 font-medium">Data unavailable</div>
+        </motion.div>
+      )}
 
       {/* Server Info */}
       <ServerInfoCard serverData={serverData} />
