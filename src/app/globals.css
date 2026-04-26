@@ -96,3 +96,35 @@ body {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  /* Prevent 300ms delay on touch devices */
+  * {
+    touch-action: manipulation;
+  }
+
+  /* Ensure minimum tap target size (44x44px) */
+  button, a, [role="button"], input[type="button"], input[type="submit"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Improve touch feedback */
+  button:active, a:active, [role="button"]:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+    transition: opacity 0.1s, transform 0.1s;
+  }
+}
+
+/* Cursor pointer for all interactive elements */
+button, a, [role="button"], input[type="button"], input[type="submit"],
+input[type="text"], select, [onclick] {
+  cursor: pointer;
+}
+
+/* Instant feedback on click/tap */
+button:active, a:active, [role="button"]:active {
+  transition: transform 0.05s, opacity 0.05s;
+}

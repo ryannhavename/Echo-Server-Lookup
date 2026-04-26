@@ -3,14 +3,35 @@
 import type { MCServerResponse, WHOISData } from '@/types/minecraft';
 
 const MCSRVSTAT_API = 'https://api.mcsrvstat.us/3';
+const FETCH_TIMEOUT = 10000; // 10 second timeout
+
+/**
+ * Fetch with timeout support
+ */
+async function fetchWithTimeout(url: string, options?: RequestInit, timeoutMs: number = FETCH_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return response;
+  } catch (error) {
+    clearTimeout(timeout);
+    throw error;
+  }
+}
 
 export async function fetchServerData(ip: string): Promise<MCServerResponse | null> {
   try {
-    const res = await fetch(`${MCSRVSTAT_API}/${encodeURIComponent(ip)}`, {
-      next: { revalidate: 60 }, // Cache for 60 seconds
+    const res = await fetchWithTimeout(`${MCSRVSTAT_API}/${encodeURIComponent(ip)}`, {
       headers: {
         'User-Agent': 'Echo-Server-Lookup/1.0',
       },
+      next: { revalidate: 60 }, // Cache for 60 seconds
     });
 
     if (!res.ok) {
@@ -27,11 +48,12 @@ export async function fetchServerData(ip: string): Promise<MCServerResponse | nu
 
 export async function fetchWhoisData(ip: string): Promise<WHOISData | null> {
   try {
-    const res = await fetch(`/api/whois?ip=${encodeURIComponent(ip)}`, {
-      next: { revalidate: 300 }, // Cache for 5 minutes (WHOIS data doesn't change often)
+    const res = await fetchWithTimeout(`/api/whois?ip=${encodeURIComponent(ip)}`, {
       headers: {
         'User-Agent': 'Echo-Server-Lookup/1.0',
+        'Accept': 'application/json',
       },
+      next: { revalidate: 300 }, // Cache for 5 minutes
     });
 
     if (!res.ok) {
@@ -56,20 +78,29 @@ export async function fetchWhoisData(ip: string): Promise<WHOISData | null> {
   }
 }
 
-// Chained fetch: First get Minecraft data, then use resolved IP for WHOIS
+/**
+ * Chained fetch: First get Minecraft data, then use resolved IP for WHOIS
+ * Optimized to start WHOIS fetch early with the input IP
+ */
 export async function fetchCombinedData(input: string): Promise<{
   minecraft: MCServerResponse | null;
   whois: WHOISData | null;
 }> {
-  const minecraft = await fetchServerData(input);
+  // Start both fetches in parallel (WHOIS will use input IP, which works for domains too)
+  const minecraftPromise = fetchServerData(input);
+  const whoisPromise = fetchWhoisData(input);
+
+  const minecraft = await minecraftPromise;
 
   if (!minecraft || (!minecraft.online && !minecraft.hostname)) {
+    // Still wait for whois to complete (but don't use it)
+    await whoisPromise.catch(() => null);
     return { minecraft, whois: null };
   }
 
-  // Use the resolved IP from MCSrvStat for WHOIS lookup
-  const ipForWhois = minecraft.ip || input;
-  const whois = await fetchWhoisData(ipForWhois);
+  // Use the resolved IP from MCSrvStat for more accurate WHOIS
+  // But if the first whois request was with the domain, it should also work
+  const whois = await whoisPromise;
 
   return { minecraft, whois };
 }

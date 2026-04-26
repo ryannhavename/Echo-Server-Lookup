@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Hash } from 'lucide-react';
 import type { Player } from '@/types/minecraft';
 import { getFallbackAvatar, isAlexSkin, isValidUUID } from '@/lib/minecraft';
@@ -11,21 +11,32 @@ interface PlayerGridProps {
 
 export function PlayerGrid({ players }: PlayerGridProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [touchDevice, setTouchDevice] = useState(false);
 
-  // Use our API route (tries multiple services + SVG fallback)
-  const getSrc = (uuid: string, size: number = 64): string => {
+  // Detect touch device
+  useEffect(() => {
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setTouchDevice(isTouch);
+  }, []);
+
+  const getSrc = useCallback((uuid: string, size: number = 64): string => {
     if (!uuid || !isValidUUID(uuid)) {
       return getFallbackAvatar(isAlexSkin(uuid));
     }
     return `/api/avatar/${uuid}?size=${size}`;
-  };
-
-  const handleMouseEnter = useCallback((index: number) => {
-    setHoveredIndex(index);
   }, []);
 
+  const handleMouseEnter = useCallback((index: number) => {
+    if (!touchDevice) setHoveredIndex(index);
+  }, [touchDevice]);
+
   const handleMouseLeave = useCallback(() => {
-    setHoveredIndex(null);
+    if (!touchDevice) setHoveredIndex(null);
+  }, [touchDevice]);
+
+  const handleTouchStart = useCallback((index: number) => {
+    // Toggle on touch - if already showing, hide it
+    setHoveredIndex(prev => prev === index ? null : index);
   }, []);
 
   return (
@@ -47,20 +58,24 @@ export function PlayerGrid({ players }: PlayerGridProps) {
               style={{ animationDelay: `${index * 30}ms` }}
               onMouseEnter={() => handleMouseEnter(index)}
               onMouseLeave={handleMouseLeave}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handleTouchStart(index);
+              }}
             >
-              {/* Main avatar */}
+              {/* Main avatar - min 44x44px for mobile tap target */}
               <img
                 src={avatarSrc}
                 alt={player.name}
-                className="w-full aspect-square rounded-lg border border-white/10 bg-gray-800 group-hover:border-blue-500/50 transition-all animate-fade-in group-hover:shadow-[0_0_12px_rgba(59,130,246,0.3)]"
+                className="w-full aspect-square rounded-lg border border-white/10 bg-gray-800 group-hover:border-blue-500/50 transition-all animate-fade-in group-hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] cursor-pointer"
+                style={{ minWidth: '44px', minHeight: '44px', touchAction: 'manipulation' }}
                 loading="lazy"
                 onError={(e) => {
-                  // Ultimate fallback - SVG
                   (e.target as HTMLImageElement).src = getFallbackAvatar(isAlexSkin(uuid));
                 }}
               />
 
-              {/* Tooltip */}
+              {/* Tooltip - only show on non-touch or when touched */}
               {isHovered && (
                 <div
                   className="absolute z-[99999] pointer-events-none"
@@ -128,7 +143,9 @@ export function PlayerGrid({ players }: PlayerGridProps) {
         })}
 
         {players.length > 24 && (
-          <div className="flex items-center justify-center aspect-square rounded-lg border border-white/10 bg-white/[0.02] text-xs text-gray-400">
+          <div className="flex items-center justify-center aspect-square rounded-lg border border-white/10 bg-white/[0.02] text-xs text-gray-400 cursor-pointer hover:border-white/20 transition-colors"
+            style={{ minWidth: '44px', minHeight: '44px', touchAction: 'manipulation' }}
+          >
             +{players.length - 24}
           </div>
         )}
