@@ -47,8 +47,11 @@ export async function fetchServerData(ip: string): Promise<MCServerResponse | nu
 }
 
 export async function fetchWhoisData(ip: string): Promise<WHOISData | null> {
+  // Strip port if present (e.g., "mcpvp.club:25565" -> "mcpvp.club")
+  const ipClean = ip.split(':')[0];
+
   try {
-    const res = await fetchWithTimeout(`/api/whois?ip=${encodeURIComponent(ip)}`, {
+    const res = await fetchWithTimeout(`/api/whois?ip=${encodeURIComponent(ipClean)}`, {
       headers: {
         'User-Agent': 'Echo-Server-Lookup/1.0',
         'Accept': 'application/json',

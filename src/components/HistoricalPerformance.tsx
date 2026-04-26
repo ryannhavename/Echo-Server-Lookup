@@ -16,7 +16,7 @@ const DynamicAreaChart = dynamic(
         chartGradient: string[];
       }) {
         return (
-          <div className="h-48 w-full" style={{ willChange: 'transform' }}>
+          <div style={{ width: '100%', minHeight: '200px', height: '200px', willChange: 'transform' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                 <defs>
