@@ -82,28 +82,25 @@ export async function fetchWhoisData(ip: string): Promise<WHOISData | null> {
 }
 
 /**
- * Chained fetch: First get Minecraft data, then use resolved IP for WHOIS
- * Optimized to start WHOIS fetch early with the input IP
+ * Fetch combined data: First get Minecraft data, then use resolved IP for WHOIS
+ * Serial approach to ensure WHOIS uses clean IP (without port)
  */
 export async function fetchCombinedData(input: string): Promise<{
   minecraft: MCServerResponse | null;
   whois: WHOISData | null;
 }> {
-  // Start both fetches in parallel (WHOIS will use input IP, which works for domains too)
-  const minecraftPromise = fetchServerData(input);
-  const whoisPromise = fetchWhoisData(input);
-
-  const minecraft = await minecraftPromise;
+  // First, get Minecraft data to resolve IP
+  const minecraft = await fetchServerData(input);
 
   if (!minecraft || (!minecraft.online && !minecraft.hostname)) {
-    // Still wait for whois to complete (but don't use it)
-    await whoisPromise.catch(() => null);
     return { minecraft, whois: null };
   }
 
-  // Use the resolved IP from MCSrvStat for more accurate WHOIS
-  // But if the first whois request was with the domain, it should also work
-  const whois = await whoisPromise;
+  // Use the resolved IP from MCSrvStat for WHOIS (strip port if present)
+  const ipForWhois = (minecraft.ip || input).split(':')[0];
+
+  // Fetch WHOIS with clean IP
+  const whois = await fetchWhoisData(ipForWhois);
 
   return { minecraft, whois };
 }
